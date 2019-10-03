@@ -24,7 +24,7 @@ where facility_short_name = 'LGH'
         OR chief_complaint_1_system in ('Mental Health', 'SUBSTANCE MISUSE'))
     
     -- use the following to exclude "cognitive decline" conditions: 
-    and disch_ed_dx_1_cd <> 'F03'  -- Dementia 
+    and disch_ed_dx_1_cd not in ('F03', 'F00%', 'F01', 'F02%')
     
     
 order by start_date_id
