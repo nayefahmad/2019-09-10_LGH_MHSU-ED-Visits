@@ -24,18 +24,26 @@ setup_denodo()
 
 
 #+ rest 
-#' # LWBS data 
-# LWBS data ----------
+#' # LWBS data - overall 
+#' 
+#' ## Parameters
+#' 
+# LWBS data - overall----------
+begin_date_id <- "20140101" 
+end_date_id <- "20191001"
 
+#' ## Data pull 
+# > Data pull -----
 # lwbs codes: 
 vw_eddata %>% 
   filter(facility_short_name == "LGH", 
-         start_date_id >= "20140101", 
-         start_date_id <= "20191001") %>% 
+         start_date_id >= begin_date_id, 
+         start_date_id <= end_date_id) %>% 
   select(disch_disp_lwbs_at_left_ed, 
          disch_disp_lwbs_desc_at_left_ed) %>% 
   distinct() %>% 
   collect %>% 
+  
   kable() %>% 
   kable_styling(bootstrap_options = c("striped",
                 "condensed", 
@@ -47,8 +55,8 @@ vw_eddata %>%
 df1.lwbs_overall <- 
   vw_eddata %>% 
   filter(facility_short_name == "LGH", 
-         start_date_id >= "20140101", 
-         start_date_id <= "20191001", 
+         start_date_id >= begin_date_id, 
+         start_date_id <= end_date_id, 
          disch_disp_lwbs_at_left_ed != 0) %>% 
   select(start_date_id,
          patient_id, 
@@ -68,8 +76,51 @@ df1.1.lwbs_overall_by_day <-
   # fill missing dates:
   mutate(start_date = ymd(start_date_id)) %>% 
   fill_dates(start_date, 
-             "2014-01-01", 
-             "2019-10-01")
+             ymd(begin_date_id), 
+             ymd(end_date_id)) %>% 
+  
+  replace_na(list(daily_lwbs = 0))
 
-str(df1.1.lwbs_overall_by_day)
-summary(df1.1.lwbs_overall_by_day)
+
+# str(df1.1.lwbs_overall_by_day)
+# summary(df1.1.lwbs_overall_by_day)
+
+
+#' Plots
+# > Plots ----------
+df1.1.lwbs_overall_by_day %>% 
+  ggplot(aes(x = dates_fill, 
+             y = daily_lwbs)) + 
+  geom_point(alpha = .3) + 
+  geom_smooth() + 
+  labs(title = "LGH ED - Daily LWBS count", 
+       subtitle = sprintf("%s to %s", 
+                          begin_date_id, 
+                          end_date_id)) + 
+  theme_light() +
+  theme(panel.grid.minor = element_line(colour = "grey95"), 
+        panel.grid.major = element_line(colour = "grey95"))
+      
+
+
+
+
+#' # LWBS data - MHSU patients 
+#' 
+#' ## Data pull 
+#' 
+
+
+
+
+
+
+
+
+
+#' # Appendix 
+#' 
+#' ## Checks 
+#' 
+
+difftime(ymd(end_date_id), ymd(begin_date_id)) + 1 == nrow(df1.1.lwbs_overall_by_day)
