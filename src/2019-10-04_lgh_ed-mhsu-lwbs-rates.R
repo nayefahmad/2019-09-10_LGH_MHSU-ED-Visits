@@ -110,12 +110,52 @@ df1.1.lwbs_overall_by_day %>%
 #' ## Data pull 
 #' 
 
+df2.lwbs_mhsu <- 
+  vw_eddata %>% 
+  filter(facility_short_name == "LGH", 
+         start_date_id >= begin_date_id, 
+         start_date_id <= end_date_id, 
+         disch_disp_lwbs_at_left_ed != 0) %>% 
+  select(start_date_id,
+         patient_id, 
+         is_admitted, 
+         disch_disp_lwbs_at_left_ed, 
+         start_to_left_ed_elapsed_time_minutes, 
+         disch_ed_dx_1_cd, 
+         chief_complaint_1_system) %>% 
+  collect() 
+
+# view: 
+df2.lwbs_mhsu %>%
+  datatable(extensions = 'Buttons',
+            options = list(dom = 'Bfrtip',
+                           buttons = c('excel', "csv")))
 
 
+# > MHSU filters: -------------------
+df2.1.lwbs_mhsu_filtered <- 
+  df2.lwbs_mhsu %>% 
+  filter(grepl("^F\\d\\d.*", disch_ed_dx_1_cd) | 
+           grepl("^R4[4-9].*", disch_ed_dx_1_cd) | 
+           chief_complaint_1_system %in% c("Mental Health", 
+                                           "SUBSTANCE MISUSE"), 
+         
+         # Exclude dementia: 
+         !disch_ed_dx_1_cd %in% c("F03", "F01"), 
+         !grepl("^F00.*", disch_ed_dx_1_cd), 
+         !grepl("^F02.*", disch_ed_dx_1_cd))
+
+# view: 
+df2.1.lwbs_mhsu_filtered %>% 
+  datatable(extensions = 'Buttons',
+            options = list(dom = 'Bfrtip', 
+                           buttons = c('excel', "csv")))
 
 
+#' ## Plots
+#' 
 
-
+ 
 
 
 #' # Appendix 
@@ -123,4 +163,35 @@ df1.1.lwbs_overall_by_day %>%
 #' ## Checks 
 #' 
 
+#' Expected num rows? 
 difftime(ymd(end_date_id), ymd(begin_date_id)) + 1 == nrow(df1.1.lwbs_overall_by_day)
+
+#' Identifying MHSU properly? Copmare with Lily's results. Should have about
+#' 4600 rows.
+
+temp <- 
+  vw_eddata %>% 
+  filter(facility_short_name == "LGH", 
+         start_date_id >= "20180401", 
+         start_date_id <= "20190624") %>% 
+  select(disch_ed_dx_1_cd, 
+         chief_complaint_1_system) %>% 
+  collect()
+
+# nrow(temp)
+         
+num_row <- 
+  temp %>% 
+  filter(grepl("^F\\d\\d.*", disch_ed_dx_1_cd) | 
+           grepl("^R4[4-9].*", disch_ed_dx_1_cd) | 
+           chief_complaint_1_system %in% c("Mental Health", 
+                                           "SUBSTANCE MISUSE"), 
+         
+         # Exclude dementia: 
+         !disch_ed_dx_1_cd %in% c("F03", "F01"), 
+         !grepl("^F00.*", disch_ed_dx_1_cd), 
+         !grepl("^F02.*", disch_ed_dx_1_cd)
+         ) %>% 
+  nrow()
+
+abs(num_row - 4600) < 50 
