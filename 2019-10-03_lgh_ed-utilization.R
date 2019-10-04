@@ -227,8 +227,20 @@ ggplotly(p)
 #' Okay, now let's look at summaries by hour of day. 
 #' 
 
+p <- 
+  df5.queue_adjusted %>%
+  ggplot(aes(x = hour_of_day, 
+             y = queue_length_adjusted, 
+             group = date(timestamp))) +
+  geom_line(alpha = .1) + 
+  theme_light() +
+  theme(panel.grid.minor = element_line(colour = "grey95"), 
+        panel.grid.major = element_line(colour = "grey95"))
+      
 
+ggplotly(p)
 
+#' Seems like about 11 AM is the time when there's highest census. 
 
 
 
