@@ -18,6 +18,7 @@ library(tidyverse)
 library(denodoExtractor)
 library(lubridate)
 library(DT)
+library(plotly)
 
 setup_denodo()
 
@@ -41,8 +42,9 @@ setup_denodo()
 #' 
 
 # Skeleton data frame -------
-start_date_time_p <- ymd_hms("2018-01-01 00:00:00")
-end_date_time_p <- ymd_hms("2018-01-10 00:00:00")  
+# > Parameters -----------
+start_date_time_p <- ymd_hms("2018-07-01 00:00:00")
+end_date_time_p <- ymd_hms("2019-07-01 00:00:00")  
 
 start_date_p <- ymd(start_date_time_p)
 end_date_p <- ymd(end_date_time_p)
@@ -155,3 +157,129 @@ df4.net_changes %>%
             options = list(dom = 'Bfrtip', 
                            buttons = c('excel', "csv")))
 
+
+#' Let's focus on just census at midnight: 
+
+df4.net_changes %>% 
+  filter(hour_of_day == 23) %>% 
+  datatable(extensions = 'Buttons',
+            options = list(dom = 'Bfrtip', 
+                           buttons = c('excel', "csv")))
+
+
+
+#'*********************************************
+#' # Plots 
+# Plots -----
+
+p <- 
+  df4.net_changes %>% 
+  ggplot(aes(x = timestamp, 
+             y = queue_length)) + 
+  geom_line() + 
+  theme_light() +
+  theme(panel.grid.minor = element_line(colour = "grey95"), 
+        panel.grid.major = element_line(colour = "grey95")) 
+  
+
+ggplotly(p)
+    
+
+#' ## Fixing the cold start problem
+#'
+#' Clearly, the queue length can't actually be negative.
+#'
+#' We might be getting negative values because we're implicitly assuming here
+#' that at midnight at the start of the trial, there is no one in the ED.
+#' There's no reason why that would actually be true.
+#'
+#' To get rid of the negative values, I'll add in a guess for how many people
+#' there might be in ED at that start time.
+#'
+#' The guess is informed by the fact that the calculated queue values almost
+#' never go below -20. So, assuming that there were 20 pts in the ED at the
+#' start of the trial is a resonable guess that will eliminate nearly all
+#' negative values.
+
+# > Fixing the cold start problem -------
+df5.queue_adjusted <- 
+  df4.net_changes %>% 
+  mutate(queue_length_adjusted = queue_length + 20)
+
+
+# plot
+p <- 
+  df5.queue_adjusted %>% 
+  ggplot(aes(x = timestamp, 
+             y = queue_length_adjusted)) + 
+  geom_line() + 
+  geom_hline(yintercept = 0, 
+             col = "blue") + 
+  theme_light() +
+  theme(panel.grid.minor = element_line(colour = "grey95"), 
+        panel.grid.major = element_line(colour = "grey95")) 
+
+
+ggplotly(p)
+
+
+
+#' Okay, now let's look at summaries by hour of day. 
+#' 
+
+
+
+
+
+
+
+
+#'*********************************************
+
+
+#'
+#' \  
+#' \  
+#' \  
+#'
+#' # Appendix 
+# Appendix -------
+#' 
+#' Is this a random walk? If so, differenced series will be white noise. 
+#' 
+
+df4.net_changes %>% 
+  mutate(diff = queue_length - lag(queue_length)) %>% 
+  ggplot(aes(x = timestamp, 
+             y = diff)) + 
+  geom_line() + 
+  geom_hline(yintercept = 0, 
+             col = "white") + 
+  geom_smooth(col = "red") + 
+  labs(title = "Time series of first difference of queue length", 
+       subtitle = "If this is white noise, the original series is a random walk") + 
+  theme_light() +
+  theme(panel.grid.minor = element_line(colour = "grey95"), 
+        panel.grid.major = element_line(colour = "grey95")) 
+
+
+df4.net_changes %>% 
+  mutate(diff = queue_length - lag(queue_length)) %>% 
+  slice(2:nrow(df4.net_changes)) %>% 
+  pull(diff) %>% 
+  acf(lag.max = 72, 
+      main = "ACF of diff(queue_length)")
+  
+
+df4.net_changes %>% 
+  mutate(diff = queue_length - lag(queue_length)) %>% 
+  slice(2:nrow(df4.net_changes)) %>% 
+  pull(diff) %>% 
+  pacf(lag.max = 72, 
+       main = "PACF of diff(queue_length)")
+
+#' Okay scratch that hypothesis; it's periodic with 24 hour period (no surprise)
+#' 
+#' 
+#' 
+#' 
