@@ -85,8 +85,13 @@ df1.1.lwbs_overall_by_day <-
 # str(df1.1.lwbs_overall_by_day)
 # summary(df1.1.lwbs_overall_by_day)
 
+df1.1.lwbs_overall_by_day %>% 
+  datatable(extensions = 'Buttons',
+            options = list(dom = 'Bfrtip', 
+                           buttons = c('excel', "csv")))
 
-#' Plots
+#' 
+#' ## Plots
 # > Plots ----------
 df1.1.lwbs_overall_by_day %>% 
   ggplot(aes(x = dates_fill, 
@@ -110,6 +115,7 @@ df1.1.lwbs_overall_by_day %>%
 #' ## Data pull 
 #' 
 
+# LWBS data - MHSU patients -------
 df2.lwbs_mhsu <- 
   vw_eddata %>% 
   filter(facility_short_name == "LGH", 
@@ -152,12 +158,62 @@ df2.1.lwbs_mhsu_filtered %>%
                            buttons = c('excel', "csv")))
 
 
-#' ## Plots
-#' 
+df2.2.lwbs_mhsu_daily <- 
+  df2.1.lwbs_mhsu_filtered %>% 
+  group_by(start_date_id) %>% 
+  summarise(daily_mhsu_lwbs = n())
 
+#' ## Plots
+# > Plots ----
+
+df2.3.fill_missing <- 
+  df2.2.lwbs_mhsu_daily %>% 
+  
+  # fill missing dates:
+  mutate(start_date = ymd(start_date_id)) %>% 
+  fill_dates(start_date, 
+             ymd(begin_date_id), 
+             ymd(end_date_id)) %>% 
+  
+  replace_na(list(daily_mhsu_lwbs = 0))
+
+# view: 
+df2.3.fill_missing %>% 
+  datatable(extensions = 'Buttons',
+            options = list(dom = 'Bfrtip', 
+                           buttons = c('excel', "csv")))
+  
+  # plot
+df2.3.fill_missing %>% 
+  ggplot(aes(x = dates_fill, 
+             y = daily_mhsu_lwbs)) + 
+  geom_point(alpha = .3) + 
+  geom_smooth() + 
+  labs(title = "LGH ED - Daily LWBS count among MHSU patients", 
+       subtitle = sprintf("%s to %s", 
+                          begin_date_id, 
+                          end_date_id)) + 
+  theme_light() +
+  theme(panel.grid.minor = element_line(colour = "grey95"), 
+        panel.grid.major = element_line(colour = "grey95"))
+
+
+  
+  
+  
  
 
 
+
+
+
+
+
+
+
+
+
+#' *********************************************
 #' # Appendix 
 #' 
 #' ## Checks 
