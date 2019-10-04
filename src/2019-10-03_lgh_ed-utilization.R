@@ -135,8 +135,8 @@ df4.net_changes <-
   left_join(df3.end_times_grouped, 
             by = c("timestamp" = "end_hour_floor")) %>% 
   
-  replace_na(replace_na(list(num_start = 0, 
-                             num_end = 0))) %>% 
+  replace_na(list(num_start = 0, 
+                             num_end = 0)) %>% 
   
   mutate(net_change = num_start - num_end, 
          queue_length = cumsum(net_change), 
