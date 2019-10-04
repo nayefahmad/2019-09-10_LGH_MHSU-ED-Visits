@@ -241,6 +241,26 @@ p <-
 ggplotly(p)
 
 #' Seems like about 11 AM is the time when there's highest census. 
+#' 
+#' Okay why did I do that instead of just making a boxplot? 
+#' 
+#' 
+
+p <- 
+  df5.queue_adjusted %>%
+  ggplot(aes(x = as.factor(hour_of_day), 
+             y = queue_length_adjusted)) +  
+  geom_boxplot() + 
+  theme_light() +
+  labs(title = "LGH - Number of patients in ED", 
+       subtitle = sprintf("%s to %s", 
+                          start_date_p, 
+                          end_date_p)) + 
+  theme(panel.grid.minor = element_line(colour = "grey95"), 
+        panel.grid.major = element_line(colour = "grey95"))
+
+p
+ggplotly(p)
 
 
 
