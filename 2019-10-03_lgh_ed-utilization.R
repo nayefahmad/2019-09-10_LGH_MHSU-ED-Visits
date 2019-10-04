@@ -42,7 +42,7 @@ setup_denodo()
 
 # Skeleton data frame -------
 start_date_time_p <- ymd_hms("2018-01-01 00:00:00")
-end_date_time_p <- ymd_hms("2018-01-02 00:00:00")  
+end_date_time_p <- ymd_hms("2018-01-10 00:00:00")  
 
 start_date_p <- ymd(start_date_time_p)
 end_date_p <- ymd(end_date_time_p)
@@ -132,6 +132,9 @@ df4.net_changes <-
             by = c("timestamp" = "start_hour_floor")) %>% 
   left_join(df3.end_times_grouped, 
             by = c("timestamp" = "end_hour_floor")) %>% 
+  
+  replace_na(replace_na(list(num_start = 0, 
+                             num_end = 0))) %>% 
   
   mutate(net_change = num_start - num_end, 
          queue_length = cumsum(net_change), 
