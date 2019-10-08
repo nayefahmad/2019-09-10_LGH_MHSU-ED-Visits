@@ -114,6 +114,7 @@ df1.1.lwbs_overall_by_day %>%
 #' 
 #' ## Data pull 
 #' 
+#' First just pull all pts with `disch_disp_lwbs_at_left_ed` != 0. 
 
 # LWBS data - MHSU patients -------
 df2.lwbs_mhsu <- 
@@ -137,6 +138,15 @@ df2.lwbs_mhsu %>%
             options = list(dom = 'Bfrtip',
                            buttons = c('excel', "csv")))
 
+#' Then filter for MHSU patients:
+#'
+#' * WHERE (disch_ed_dx_1_cd BETWEEN ('F00%') AND ('F99%') OR disch_ed_dx_1_cd
+#' BETWEEN ('R44%') AND ('R46%') 
+#' 
+#' * OR chief_complaint_1_system in ('Mental
+#' Health', 'SUBSTANCE MISUSE'))
+#'
+#' * and disch_ed_dx_1_cd not in ('F03', 'F00%', 'F01', 'F02%')
 
 # > MHSU filters: -------------------
 df2.1.lwbs_mhsu_filtered <- 
@@ -200,15 +210,191 @@ df2.3.fill_missing %>%
 
   
   
+#' *********************************************
+#' # EDLOS for MHSU LWBS pts 
+# EDLOS for MHSU LWBS pts ----------
+
+df3.ed_los <- 
+  df2.1.lwbs_mhsu_filtered %>% 
   
+  mutate(start_date = ymd(start_date_id)) %>% 
+  fill_dates(start_date, 
+             ymd(begin_date_id), 
+             ymd(end_date_id)) 
+
  
+# View 
+df3.ed_los %>% 
+  datatable(extensions = 'Buttons',
+            options = list(dom = 'Bfrtip', 
+                           buttons = c('excel', "csv")))
+
+#' Avg ED LOS for MHSU patients who were LWBS
+
+df3.ed_los %>% 
+  group_by(year(dates_fill)) %>% 
+  summarize(avg_ed_los_min = mean(start_to_left_ed_elapsed_time_minutes, 
+                              na.rm = TRUE), 
+            num_pts = n()) %>% 
+  
+  datatable(extensions = 'Buttons',
+            options = list(dom = 'Bfrtip', 
+                           buttons = c('excel', "csv"))) %>% 
+  formatRound(2, 2)
+
+
+#'
+#' # Plots 
+# > Plots ----
+
+df3.ed_los %>% 
+  ggplot(aes(x = dates_fill, 
+             y = start_to_left_ed_elapsed_time_minutes)) + 
+  geom_point() + 
+  geom_smooth() + 
+  theme_light() +
+  theme(panel.grid.minor = element_line(colour = "grey95"), 
+        panel.grid.major = element_line(colour = "grey95"))
+      
+
+df3.ed_los %>% 
+  ggplot(aes(x = start_to_left_ed_elapsed_time_minutes)) + 
+  geom_density() + 
+  facet_wrap(~year(dates_fill)) + 
+  theme_light() +
+  theme(panel.grid.minor = element_line(colour = "grey95"), 
+        panel.grid.major = element_line(colour = "grey95"))
+      
+
+#' Interesting that from 2014 to 2019, it looks like there's a shift from a
+#' single dominant distribution to a mixture of at least 2 distributions.
+#' 
+#' Todo: Wonder if we can split those distributions using CTAS? 
+#' 
+#' 
+
+
+#' *********************************************
+#' # MHSU ED LOS - admits vs non-admits 
+# MHSU ED LOS - admits vs non-admits -----
+
+df4.ed_los_admits_and_non_admits <- 
+  vw_eddata %>% 
+  filter(facility_short_name == "LGH", 
+         start_date_id >= begin_date_id, 
+         start_date_id <= end_date_id) %>% 
+  select(start_date_id,
+         patient_id, 
+         is_admitted, 
+         disch_disp_lwbs_at_left_ed, 
+         start_to_left_ed_elapsed_time_minutes, 
+         start_to_first_seen_by_care_provider_elapsed_time_minutes, 
+         start_to_admit_elapsed_time_minutes, 
+         disch_ed_dx_1_cd, 
+         chief_complaint_1_system) %>% 
+  collect() 
+
+# now filter for MHSU: 
+df4.ed_los_admits_and_non_admits <- 
+  df4.ed_los_admits_and_non_admits %>% 
+  filter(grepl("^F\\d\\d.*", disch_ed_dx_1_cd) | 
+           grepl("^R4[4-9].*", disch_ed_dx_1_cd) | 
+           chief_complaint_1_system %in% c("Mental Health", 
+                                           "SUBSTANCE MISUSE"), 
+         
+         # Exclude dementia: 
+         !disch_ed_dx_1_cd %in% c("F03", "F01"), 
+         !grepl("^F00.*", disch_ed_dx_1_cd), 
+         !grepl("^F02.*", disch_ed_dx_1_cd)) %>% 
+  mutate(is_mhsu_filtered = 1)
+
+
+# view 
+df4.ed_los_admits_and_non_admits %>% 
+  datatable(extensions = 'Buttons',
+            options = list(dom = 'Bfrtip', 
+                           buttons = c('excel', "csv")))
+
+
+#' # Summarize ED LOS for MHSU pts 
+df4.1.summary <- 
+  df4.ed_los_admits_and_non_admits %>% 
+  group_by(year(ymd(start_date_id)), 
+           is_admitted) %>% 
+  summarise(avg_ed_los = mean(start_to_left_ed_elapsed_time_minutes, 
+                              na.rm = TRUE)) %>% 
+  spread(key = is_admitted, 
+         value = avg_ed_los) %>% 
+  mutate(population = "mhsu_patients") %>% 
+  rename(nonadmit = `0`, 
+         admit = `1`, 
+         year = `year(ymd(start_date_id))`) # %>% 
+
+df4.1.summary %>% 
+  datatable(extensions = 'Buttons',
+            options = list(dom = 'Bfrtip', 
+                           buttons = c('excel', "csv")))
+
+
+#' For comparison, here are the values for the patient population as a whole: 
+#' 
+
+df5.all_pts_ed_los <- 
+  vw_eddata %>% 
+  filter(facility_short_name == "LGH", 
+         start_date_id >= begin_date_id, 
+         start_date_id <= end_date_id) %>% 
+  select(start_date_id,
+         patient_id, 
+         is_admitted, 
+         disch_disp_lwbs_at_left_ed, 
+         start_to_left_ed_elapsed_time_minutes, 
+         start_to_first_seen_by_care_provider_elapsed_time_minutes, 
+         start_to_admit_elapsed_time_minutes, 
+         disch_ed_dx_1_cd, 
+         chief_complaint_1_system) %>% 
+  collect() %>% 
+  
+  group_by(year(ymd(start_date_id)), 
+           is_admitted) %>% 
+  summarise(avg_ed_los = mean(start_to_left_ed_elapsed_time_minutes, 
+                              na.rm = TRUE)) %>% 
+  spread(key = is_admitted, 
+         value = avg_ed_los) %>% 
+  mutate(population = "all_patients") %>% 
+  rename(nonadmit = `0`, 
+         admit = `1`, 
+         year = `year(ymd(start_date_id))`) # %>% 
+  
+# view:   
+df5.all_pts_ed_los %>% 
+  datatable(extensions = 'Buttons',
+            options = list(dom = 'Bfrtip', 
+                           buttons = c('excel', "csv")))
+
+  
 
 
 
+#' # Plots
+# > Plots ----
 
-
-
-
+df4.1.summary %>% 
+  bind_rows(df5.all_pts_ed_los) %>% 
+  gather(key = is_admit, 
+         value = minutes, 
+         -c(year, population)) %>% 
+  
+  ggplot(aes(x = year, 
+             y = minutes, 
+             group = population, 
+             colour = population)) +
+  geom_line() + 
+  facet_wrap(~is_admit) + 
+  theme_light() +
+  theme(panel.grid.minor = element_line(colour = "grey95"), 
+        panel.grid.major = element_line(colour = "grey95"))
+      
 
 
 
@@ -218,6 +404,7 @@ df2.3.fill_missing %>%
 #' 
 #' ## Checks 
 #' 
+# Appendix -----
 
 #' Expected num rows? 
 difftime(ymd(end_date_id), ymd(begin_date_id)) + 1 == nrow(df1.1.lwbs_overall_by_day)
