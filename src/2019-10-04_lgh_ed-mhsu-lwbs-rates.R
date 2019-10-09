@@ -110,7 +110,7 @@ df1.1.lwbs_overall_by_day %>%
 
 
 
-#' # LWBS data - MHSU patients 
+#' # LWBS data - MHSU patients only 
 #' 
 #' ## Data pull 
 #' 
@@ -129,7 +129,9 @@ df2.lwbs_mhsu <-
          disch_disp_lwbs_at_left_ed, 
          start_to_left_ed_elapsed_time_minutes, 
          disch_ed_dx_1_cd, 
-         chief_complaint_1_system) %>% 
+         chief_complaint_1_system, 
+         age_at_start_date, 
+         gender_desc_at_start_date) %>% 
   collect() 
 
 # view: 
@@ -168,6 +170,22 @@ df2.1.lwbs_mhsu_filtered %>%
   datatable(extensions = 'Buttons',
             options = list(dom = 'Bfrtip', 
                            buttons = c('excel', "csv")))
+
+#' ### Age distribution of ED MHSU LWBS: 
+#' 
+df2.1.lwbs_mhsu_filtered %>% 
+  ggplot(aes(x = age_at_start_date)) + 
+  # geom_density() +
+  geom_histogram(fill = "steelblue4", 
+                 bins = 15) +
+  labs(title = "LGH ED - Age distribution of ED MHSU LWBS") + 
+  theme_light() +
+  theme(panel.grid.minor = element_line(colour = "grey95"), 
+        panel.grid.major = element_line(colour = "grey95"))
+      
+#' Avg age of these patients is `r df2.1.lwbs_mhsu_filtered$age_at_start_date %>% mean(na.rm = TRUE)`. 
+#' 
+#' `r df2.1.lwbs_mhsu_filtered %>% filter(gender_desc_at_start_date == "Female") %>% nrow()` patients were female (`r df2.1.lwbs_mhsu_filtered %>% filter(gender_desc_at_start_date == "Female") %>% nrow()/nrow(df2.1.lwbs_mhsu_filtered)`)
 
 
 df2.2.lwbs_mhsu_daily <- 
@@ -211,7 +229,10 @@ df2.3.fill_missing %>%
 
 #' **No real evidence that num LWBS is increasing for this population. **
 #' 
-  
+#' From 2014 to present, the average number MHSU LWBS is `r df2.3.fill_missing$daily_mhsu_lwbs %>% mean` 
+#'   
+
+
   
 #' *********************************************
 #' # EDLOS for MHSU LWBS pts 
@@ -269,6 +290,9 @@ df3.ed_los %>%
 
 #' **No real evidence that ED LOS is increasing for this population. Might
 #' actually be decreasing.**
+#' 
+#' Avg EDLOS is `r df3.ed_los$start_to_left_ed_elapsed_time_minutes %>% mean(na.rm = TRUE )`
+#' 
 
 
 df3.ed_los %>% 
@@ -437,6 +461,8 @@ df4.1.summary %>%
 #' 
 # Appendix -----
 
+# > Checks -----
+
 #' Expected num rows? 
 difftime(ymd(end_date_id), ymd(begin_date_id)) + 1 == nrow(df1.1.lwbs_overall_by_day)
 
@@ -469,3 +495,18 @@ num_row <-
   nrow()
 
 abs(num_row - 4600) < 50 
+
+
+#' ## Output
+# > Output --------
+
+write_csv(df4.1.summary %>% 
+            bind_rows(df5.all_pts_ed_los) %>% 
+            gather(key = is_admit, 
+                   value = minutes, 
+                   -c(year, population)),
+          here::here("results", 
+                     "dst", 
+                     "2019-10-09_lgh_ed-los-non-admit-and-admit.csv"))
+             
+
