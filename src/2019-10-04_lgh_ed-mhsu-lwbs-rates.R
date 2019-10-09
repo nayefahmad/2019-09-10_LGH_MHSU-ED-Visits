@@ -1,7 +1,7 @@
 
 
 #'--- 
-#' title: "LGH ED - LWBS rates for ED MHSU"
+#' title: "LGH ED - LWBS rates and LOS for MHSU patients"
 #' author: "Nayef Ahmad"
 #' date: "2019-10-05"
 #' output: 
@@ -24,11 +24,11 @@ setup_denodo()
 
 
 #+ rest 
-#' # LWBS data - overall 
+#' # LWBS data - all patients 
 #' 
 #' ## Parameters
 #' 
-# LWBS data - overall----------
+# LWBS data - all pts ----------
 begin_date_id <- "20140101" 
 end_date_id <- "20191001"
 
@@ -116,7 +116,7 @@ df1.1.lwbs_overall_by_day %>%
 #' 
 #' First just pull all pts with `disch_disp_lwbs_at_left_ed` != 0. 
 
-# LWBS data - MHSU patients -------
+# LWBS data - MHSU patients only -------
 df2.lwbs_mhsu <- 
   vw_eddata %>% 
   filter(facility_short_name == "LGH", 
@@ -133,20 +133,22 @@ df2.lwbs_mhsu <-
   collect() 
 
 # view: 
-df2.lwbs_mhsu %>%
-  datatable(extensions = 'Buttons',
-            options = list(dom = 'Bfrtip',
-                           buttons = c('excel', "csv")))
+# df2.lwbs_mhsu %>%
+#   datatable(extensions = 'Buttons',
+#             options = list(dom = 'Bfrtip',
+#                            buttons = c('excel', "csv")))
 
-#' Then filter for MHSU patients:
+#' ## MHSU filters
+#' 
+#' These are the filters being used for MHSU patients:
 #'
-#' * WHERE (disch_ed_dx_1_cd BETWEEN ('F00%') AND ('F99%') OR disch_ed_dx_1_cd
+#' * WHERE (`disch_ed_dx_1_cd` BETWEEN ('F00%') AND ('F99%') OR `disch_ed_dx_1_cd`
 #' BETWEEN ('R44%') AND ('R46%') 
 #' 
-#' * OR chief_complaint_1_system in ('Mental
+#' * OR `chief_complaint_1_system` in ('Mental
 #' Health', 'SUBSTANCE MISUSE'))
 #'
-#' * and disch_ed_dx_1_cd not in ('F03', 'F00%', 'F01', 'F02%')
+#' * and `disch_ed_dx_1_cd` not in ('F03', 'F00%', 'F01', 'F02%')  -- exclude dementia
 
 # > MHSU filters: -------------------
 df2.1.lwbs_mhsu_filtered <- 
@@ -207,7 +209,8 @@ df2.3.fill_missing %>%
   theme(panel.grid.minor = element_line(colour = "grey95"), 
         panel.grid.major = element_line(colour = "grey95"))
 
-
+#' **No real evidence that num LWBS is increasing for this population. **
+#' 
   
   
 #' *********************************************
@@ -229,7 +232,10 @@ df3.ed_los %>%
             options = list(dom = 'Bfrtip', 
                            buttons = c('excel', "csv")))
 
-#' Avg ED LOS for MHSU patients who were LWBS
+#' Note that this table is not grouped by day. 
+#' 
+
+#' ## Avg ED LOS by year
 
 df3.ed_los %>% 
   group_by(year(dates_fill)) %>% 
@@ -244,23 +250,35 @@ df3.ed_los %>%
 
 
 #'
-#' # Plots 
+#' ## Plots 
 # > Plots ----
 
 df3.ed_los %>% 
   ggplot(aes(x = dates_fill, 
              y = start_to_left_ed_elapsed_time_minutes)) + 
-  geom_point() + 
+  geom_point(alpha = .3) + 
   geom_smooth() + 
+  labs(title = "LGH ED - LOS in minutes for MHSU LWBS patients", 
+       subtitle = sprintf("%s to %s", 
+                          begin_date_id, 
+                          end_date_id)) + 
   theme_light() +
   theme(panel.grid.minor = element_line(colour = "grey95"), 
         panel.grid.major = element_line(colour = "grey95"))
       
 
+#' **No real evidence that ED LOS is increasing for this population. Might
+#' actually be decreasing.**
+
+
 df3.ed_los %>% 
   ggplot(aes(x = start_to_left_ed_elapsed_time_minutes)) + 
   geom_density() + 
   facet_wrap(~year(dates_fill)) + 
+  labs(title = "LGH ED - Distribution of LOS in minutes for MHSU LWBS patients", 
+       subtitle = sprintf("%s to %s", 
+                          begin_date_id, 
+                          end_date_id)) + 
   theme_light() +
   theme(panel.grid.minor = element_line(colour = "grey95"), 
         panel.grid.major = element_line(colour = "grey95"))
@@ -275,8 +293,8 @@ df3.ed_los %>%
 
 
 #' *********************************************
-#' # MHSU ED LOS - admits vs non-admits 
-# MHSU ED LOS - admits vs non-admits -----
+#' # EDLOS - admits vs non-admits 
+# EDLOS - admits vs non-admits -----
 
 df4.ed_los_admits_and_non_admits <- 
   vw_eddata %>% 
@@ -376,7 +394,7 @@ df5.all_pts_ed_los %>%
 
 
 
-#' # Plots
+#' ## Plots
 # > Plots ----
 
 df4.1.summary %>% 
@@ -391,11 +409,24 @@ df4.1.summary %>%
              colour = population)) +
   geom_line() + 
   facet_wrap(~is_admit) + 
+  labs(title = "LGH ED - Average ED LOS by year", 
+       subtitle = sprintf("%s to %s", 
+                          begin_date_id, 
+                          end_date_id)) + 
   theme_light() +
   theme(panel.grid.minor = element_line(colour = "grey95"), 
         panel.grid.major = element_line(colour = "grey95"))
       
-
+#'
+#' ## Notes:
+#'
+#' What happened in 2017? Why did EDLOS for admits drop so much? As usual,
+#' probably CST go-live prep
+#'
+#' Among admits, MHSU pts spend less time in ED than other patients.
+#'
+#' Opposite is true for non-admits.
+#' 
 
 
 
