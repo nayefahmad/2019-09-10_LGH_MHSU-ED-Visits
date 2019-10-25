@@ -19,6 +19,7 @@ library(denodoExtractor)
 library(lubridate)
 library(DT)
 library(kableExtra)
+library(plotly)
 
 setup_denodo()
 
@@ -89,22 +90,38 @@ df2.mhsu_visits <-
 
 #' ## Group by year and LHA 
 #' 
+#' 
 
 df2.mhsu_visits %>% 
-  group_by(year(start_date), 
-           patient_geographical_local_health_authority) %>% 
-  summarise(count = n()) %>% 
+  count(lha, 
+        year(start_date)) %>% 
+  # arrange(`year(start_date)`) %>% 
   datatable(extensions = 'Buttons',
             options = list(dom = 'Bfrtip', 
                            buttons = c('excel', "csv")))
+
+p <- 
+  df2.mhsu_visits %>% 
+  
+  # top 5 levels: 
+  mutate(lha = fct_lump(lha, n = 5)) %>% 
+  count(lha, 
+        year(start_date)) %>% 
+  
+  ggplot(aes(x = `year(start_date)`, 
+             y = n, 
+             group = lha, 
+             colour = lha)) + 
+  geom_line(); # p
+  
+ggplotly(p)
   
   
   
   
   
-  
-  ggplot(aes(x = start_date, 
-             y = count)) + 
-  geom_point() + 
-  geom_smooth() + 
-  facet_wrap(~patient_geographical_local_health_authority)
+  # ggplot(aes(x = start_date, 
+  #            y = count)) + 
+  # geom_point() + 
+  # geom_smooth() + 
+  # facet_wrap(~patient_geographical_local_health_authority)
